@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Staff {
+  id           Int               @id @default(autoincrement())
+  name         String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  participants Participant[]
+  templates    MessageTemplate[]
+  notifications Notification[]
+  eventLogs    EventLog[]
+}
+
+model Participant {
+  id           Int            @id @default(autoincrement())
+  fio          String
+  phone        String
+  position     String?
+  staffId      Int
+  staff        Staff          @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdAt    DateTime       @default(now())
+  notifications Notification[]
+  eventLogs    EventLog[]
+
+  @@index([staffId])
+}
+
+model MessageTemplate {
+  id           Int      @id @default(autoincrement())
+  staffId      Int
+  staff        Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  templateText String
+  createdAt    DateTime @default(now())
+
+  @@index([staffId])
+}
+
+model Notification {
+  id            Int      @id @default(autoincrement())
+  participantId Int
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  staffId       Int
+  staff         Staff       @relation(fields: [staffId], references: [id], onDelete: Cascade) // Added Cascade here
+  messageText   String
+  status        String   // 'queued', 'sent', 'delivered', 'error'
+  scheduledTime DateTime?
+  sentAt        DateTime?
+  errorMessage  String?
+  externalId    String?  // ID from SMS API
+  apiResponse   String?
+  createdAt     DateTime @default(now())
+
+  eventLogs     EventLog[]
+
+  @@index([staffId])
+  @@index([status])
+  @@index([scheduledTime])
+}
+
+model EventLog {
+  id             Int           @id @default(autoincrement())
+  staffId        Int?
+  staff          Staff?        @relation(fields: [staffId], references: [id], onDelete: Cascade) // Added Cascade
+  participantId  Int?
+  participant    Participant?  @relation(fields: [participantId], references: [id])
+  notificationId Int?
+  notification   Notification? @relation(fields: [notificationId], references: [id], onDelete: Cascade) // Added Cascade
+  actionType     String        // 'send_sms', 'add_participant', etc.
+  details        String?
+  createdAt      DateTime      @default(now())
+
+  @@index([staffId])
+}
